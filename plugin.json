@@ -1,0 +1,12 @@
+{
+    "ID":"7c30a9f80e1d4f73b7a4c31ec5c7ddc4",
+    "ActionKeyword":"ch",
+    "Name":"Browser Bookmarks",
+    "Description":"Search your clipboard history",
+    "Author":"Wox",
+    "Version":"1.0",
+    "Language":"csharp",
+    "Website":"http://www.getwox.com/plugin",
+    "ExecuteFileName":"Wox.Plugin.browserBookmark.dll",
+    "IcoPath":"Images\\clipboard.png"
+}
