@@ -113,28 +113,6 @@ namespace Wox.Plugin.ImprovedClipboard
             var results = new List<Result>();
             var keywords = query.Search.Trim().ToLower();
             var SearchData = clipboardManager.Search(keywords);
-
-            results.AddRange(SearchData.Select(o => new Result
-            {
-                Title = o.Name,
-                SubTitle = o.Text,
-                IcoPath = icoPath,
-                Action = c =>
-                {
-                    try
-                    {
-                        System.Windows.Forms.Clipboard.SetText(o.Text);
-                        context.API.HideApp();
-                        return true;
-                    }
-                    catch (Exception e)
-                    {
-                        context.API.ShowMsg("Error", e.Message, null);
-                        return false;
-                    }
-                },
-                ContextData = o,
-            })) ;
             if (_setting.EnableImgSearch && keywords == "img")
             {
                 SearchData = clipboardManager.GetImgList();
@@ -158,9 +136,9 @@ namespace Wox.Plugin.ImprovedClipboard
                     },
                     ContextData = o,
                 }));
-                
+
             }
-            if (keywords == "clear")
+            else if (keywords == "clear")
             {
 
                 results.Insert(0, new Result
@@ -183,7 +161,7 @@ namespace Wox.Plugin.ImprovedClipboard
                     ContextData = new SearchResult { Type = ResultType.Clear },
                 });
             }
-            if(_setting.EnableImgSearch && keywords == "img clear")
+            else if (_setting.EnableImgSearch && keywords == "img clear")
             {
 
                 results.Insert(0, new Result
@@ -205,8 +183,34 @@ namespace Wox.Plugin.ImprovedClipboard
                         }
                     },
                     ContextData = new SearchResult { Type = ResultType.Clear },
-                }); 
+                });
             }
+            else
+            {
+                results.AddRange(SearchData.Select(o => new Result
+                {
+                    Title = o.Name,
+                    SubTitle = o.Text,
+                    IcoPath = icoPath,
+                    Action = c =>
+                    {
+                        try
+                        {
+                            System.Windows.Forms.Clipboard.SetText(o.Text);
+                            context.API.HideApp();
+                            return true;
+                        }
+                        catch (Exception e)
+                        {
+                            context.API.ShowMsg("Error", e.Message, null);
+                            return false;
+                        }
+                    },
+                    ContextData = o,
+                })) ;
+            }
+
+
             if (results.Count > 20) results = results.Take(20).ToList();
             return results;
         }
@@ -219,6 +223,6 @@ namespace Wox.Plugin.ImprovedClipboard
             Loggers.Logger.UpdateLoggerPath(context.CurrentPluginMetadata.PluginDirectory);
             this.clipboardManager = new ImprovedClipboard.ClipboardManager(context.CurrentPluginMetadata.PluginDirectory,_setting);
             clipboardManager.Init();
-        }      
+        }
     }
 }

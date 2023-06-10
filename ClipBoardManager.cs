@@ -99,6 +99,7 @@ namespace Wox.Plugin.ImprovedClipboard
                 format == ClipboardFormat.UnicodeText)
             {
                 string s = data.ToString().Trim();
+                if (s.Length == 0) return;
                 textList.Remove(s);
                 textList.Insert(0,s);
             }
