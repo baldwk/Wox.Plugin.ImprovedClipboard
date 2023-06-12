@@ -8,9 +8,8 @@ using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Text.RegularExpressions;
-using System.IO;
-using System.Runtime.InteropServices;
-
+using System.Security.Cryptography;
+using System.Web.Script.Serialization;
 
 namespace Wox.Plugin.ImprovedClipboard
 {
@@ -36,32 +35,7 @@ namespace Wox.Plugin.ImprovedClipboard
         private List<string> textList;
         private List<string> imgPathList;
         private Setting setting;
-
-        [DllImport("kernel32.dll")]
-        public static extern IntPtr _lopen(string lpPathName, int iReadWrite);
-
-        [DllImport("kernel32.dll")]
-        public static extern bool CloseHandle(IntPtr hObject);
-
-        public const int OF_READWRITE = 2;
-        public const int OF_SHARE_DENY_NONE = 0x40;
-        public readonly IntPtr HFILE_ERROR = new IntPtr(-1);
-        public void check(string p)
-        {
-            if (!File.Exists(p))
-            {
-                return;
-            }
-            IntPtr vHandle = _lopen(p, OF_READWRITE | OF_SHARE_DENY_NONE);
-            if (vHandle == HFILE_ERROR)
-            {
-                Loggers.Logger.LogInfo(p + " occupied");
-                return;
-            }
-            CloseHandle(vHandle);
-            Loggers.Logger.LogInfo(p + " not occupied");
-        }
-
+        private HashSet<string> imgHashList;
         public ClipboardManager(string dir, Setting setting)
         {
             this.textList = new List<string>();
@@ -76,18 +50,41 @@ namespace Wox.Plugin.ImprovedClipboard
             {
                 di.Create();
             }
+            imgHashList = new HashSet<string>();
 
             foreach (FileInfo file in di.EnumerateFiles())
             {
+                var img = GetImage(file.FullName);
+                string hash = genHash(img);
+                JavaScriptSerializer js = new JavaScriptSerializer();
+                string s = js.Serialize(img);
+                Loggers.Logger.LogInfo(s);
+                if (imgHashList.Contains(hash))
+                {
+                    continue;
+                }
+                imgHashList.Add(hash);
                 imgPathList.Add(file.FullName);
             }
-            
+
             this.setting = setting;
         }
         public void Init()
         {
             ClipboardMonitor.OnClipboardChange += onclipboardChanged;
             ClipboardMonitor.Start();
+        }
+        private string genHash(Image image)
+        {
+            MemoryStream ms = new MemoryStream();
+            Bitmap bmp = new Bitmap(image);
+            bmp.Save(ms,System.Drawing.Imaging.ImageFormat.Bmp);
+            byte[] imgBytes = ms.ToArray();
+            MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider();
+            byte[] hash = md5.ComputeHash(imgBytes);
+            string imageMD5 = BitConverter.ToString(hash).Replace("-", "").ToLower();
+            ms.Dispose();
+            return imageMD5;
         }
 
         private void onclipboardChanged(ClipboardFormat format, object data)
@@ -105,13 +102,24 @@ namespace Wox.Plugin.ImprovedClipboard
             }
             else if (setting.EnableImgSearch && format == ClipboardFormat.Bitmap)
             {
+                JavaScriptSerializer serializer = new JavaScriptSerializer();
+                string s = serializer.Serialize(data);
+                Loggers.Logger.LogInfo("clipboard: " + s);
+
                 Bitmap bmp = (Bitmap)data;
+                string hash = genHash(bmp);
+                // avoid duplicate images
+                if (imgHashList.Contains(hash))
+                {
+                    return;
+                }
                 
                 string path = Path.Combine(SaveDir, DateTime.Now.ToString("yyyy-MM-dd HH.mm.ss") + ".bmp");
                 // save to file because result only accept icon path
                 // img.GetThumbnailImage(50, 50, () => { return false; }, IntPtr.Zero).Save(path);
-                bmp.Save(path);
+                bmp.Save(path, System.Drawing.Imaging.ImageFormat.Bmp);
                 imgPathList.Insert(0,path);
+                imgHashList.Add(hash);
             }
         }
         public static bool IsSubsequence(string s, string t)
@@ -205,12 +213,14 @@ namespace Wox.Plugin.ImprovedClipboard
                 file.Delete();
             }
             imgPathList.Clear();
+            imgHashList.Clear();
         }
         public void ClearImage(string path)
         {
             System.IO.DirectoryInfo di = new DirectoryInfo(SaveDir);
 
             imgPathList.Remove(path);
+            imgHashList.Remove(genHash(GetImage(path)));
             foreach (FileInfo file in di.EnumerateFiles())
             {
                 if (file.FullName == path) {
