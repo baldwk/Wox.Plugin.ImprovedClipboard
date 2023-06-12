@@ -4,7 +4,7 @@
     "Name":"Improved Clipboard",
     "Description":"Search your clipboard history",
     "Author":"Baldwk",
-    "Version":"1.0.0",
+    "Version":"1.1.0",
     "Language":"csharp",
     "Website":"http://www.getwox.com/plugin",
     "ExecuteFileName":"Wox.Plugin.ImprovedClipboard.dll",
